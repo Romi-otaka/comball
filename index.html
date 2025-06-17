@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Socket.IO Chat</title>
+    <style>
+        ul { list-style-type: none; padding: 0; }
+        li { padding: 8px; background: #eee; margin-bottom: 5px; }
+        #player-number { font-size: 20px; font-weight: bold; color: green; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <!-- プレイヤー番号表示 -->
+    <div id="player-number"></div>
+
+    <ul id="messages"></ul>
+    <form id="form" action="">
+        <input id="input" autocomplete="off" /><button>送信</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const form = document.getElementById("form");
+        const input = document.getElementById("input");
+        const messages = document.getElementById("messages");
+        const playerDisplay = document.getElementById("player-number");
+
+        // メッセージ送信
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit("chat message", input.value);
+                input.value = "";
+            }
+        });
+
+        // メッセージ受信
+        socket.on("cmessage", function(msg) {
+            const item = document.createElement("li");
+            item.textContent = msg;
+            messages.appendChild(item);
+        });
+
+        // 他ユーザー参加通知
+        socket.on("user joined", function(msg) {
+            const item = document.createElement("li");
+            item.textContent = msg;
+            item.style.color = "blue";
+            messages.appendChild(item);
+        });
+
+        // 出題者決定
+        socket.on("questioner decided", function(questioner) {
+            const item = document.createElement("li");
+            item.textContent = `出題者は ${questioner} 番のユーザーです`;
+            item.style.color = "red";
+            messages.appendChild(item);
+        });
+
+        // 自分のユーザー番号表示
+        socket.on("user number", (num) => {
+            playerDisplay.textContent = `あなたは ${num} 番目のプレイヤーです`;
+            socket.data = socket.data || {};
+            socket.data.usernumber = num;
+        });
+
+        socket.on("usermodes", (modes) => {
+           console.log("ユーザーモード:", modes);
+           const myNumber = socket.data?.usernumber;
+           if (myNumber !== undefined) { 
+            if (modes[myNumber] === 1) {
+              alert("あなたは出題者です！");
+            } else {
+              alert("あなたは回答者です！");
+            }
+          }
+        });
+
+        // 5人目のユーザーを拒否
+        socket.on("login rejected", (msg) => {
+            alert(msg);
+            document.body.innerHTML = "<h2 style='color:red;'>" + msg + "</h2>";
+        });
+
+        // ページ読み込み時にログイン
+        window.addEventListener("load", () => {
+            socket.emit("login");
+        });
+    </script>
+</body>
+</html>
