@@ -18,6 +18,15 @@
         <input id="input" autocomplete="off" /><button>送信</button>
     </form>
 
+    <!-- 出題者専用：質問入力欄 -->
+　　　<div id="question-area" style="display:none; margin-top: 20px;">
+    　　　<form id="question-form">
+        　　　<input type="text" id="question-input" placeholder="質問を入力" />
+        　　　<button type="submit">質問を送信</button>
+   　　　 </form>
+　　　</div>
+
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -25,6 +34,13 @@
         const input = document.getElementById("input");
         const messages = document.getElementById("messages");
         const playerDisplay = document.getElementById("player-number");
+
+        //質問フォーム用
+        const questionForm = document.getElementById("question-form");
+　　　　　const questionInput = document.getElementById("question-input");
+　　　　　const questionArea = document.getElementById("question-area");
+
+        
 
         // メッセージ送信
         form.addEventListener("submit", function(e) {
@@ -71,7 +87,7 @@
            if (myNumber !== undefined) { 
             if (modes[myNumber] === 1) {
               alert("あなたは出題者です！");
-            
+              questionArea.style.display = "block"; 
             } else {
               alert("あなたは回答者です！");
              
@@ -85,6 +101,33 @@
             alert(msg);
             document.body.innerHTML = "<h2 style='color:red;'>" + msg + "</h2>";
         });
+        questionForm.addEventListener("submit", (e) => {
+    　　　　　e.preventDefault();
+    　　　　　const q = questionInput.value.trim();
+    　　　　　if (q) {
+        　　　　socket.emit("send question", q);
+        　　　　questionInput.value = "";
+    　　　　　}
+　　　　　});
+
+
+
+
+
+
+        // 質問を受け取って画面に表示
+　　　　　socket.on("new question", ({ index, text }) => {
+    　　　　　　　const item = document.createElement("li");
+    　　　　　　　item.textContent = `質問${index + 1}: ${text}`;
+    　　　　　　　item.style.color = "purple";
+   　　　　　　　 messages.appendChild(item);
+　　　　　});
+
+　　　　　// 質問制限エラーを表示
+　　　　　socket.on("question rejected", (msg) => {
+    　　　　　　　alert(msg);
+　　　　　});
+
 
         // ページ読み込み時にログイン
         window.addEventListener("load", () => {

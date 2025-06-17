@@ -14,6 +14,8 @@ let r = Math.floor(Math.random() * 4);  // 0〜3 のランダム
 let questioner;
 let usermode = [0, 0, 0, 0];
 let connectedSockets = [];
+let countquestion=0;
+let questiontext=['','',''];
 
 
 io.on("connection", (socket) => {
@@ -58,6 +60,23 @@ io.on("connection", (socket) => {
         
     　　　connectedSockets = connectedSockets.filter(s => s !== socket);
 　　});
+　　// 質問を受け取るイベント
+　　socket.on("send question", (qtext) => {
+    　　if (socket.data.usernumber === questioner) {
+       　　 questiontext[countquestion] = qtext;
+        　　countquestion++;
+        　　console.log(`質問${countquestion}: ${qtext}`);
+
+        　　// 質問を全クライアントに送信（必要に応じて出題者を除外可能）
+        　　io.emit("new question", {
+            　　index: countquestion - 1,
+            　　text: qtext
+        　　});
+    　　} 
+　　　});
+
+
+
 });
 
 server.listen(PORT, () => {
