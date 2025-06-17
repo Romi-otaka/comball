@@ -44,9 +44,12 @@ io.on("connection", (socket) => {
 
         // 4人目がログインしたら出題者を決定して送信
         if (i === 4) {
-            questioner = r;
-            console.log("出題者は: " + questioner);
-            io.emit("questioner decided", questioner);
+             questioner = r;
+             usermode = [0, 0, 0, 0];
+             usermode[questioner] = 1;
+             console.log("出題者は: " + questioner);
+             io.emit("questioner decided", questioner);
+             io.emit("usermodes", usermode);
         }
     });
 
