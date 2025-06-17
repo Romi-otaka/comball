@@ -71,8 +71,22 @@ io.on("connection", (socket) => {
         　　io.emit("new question", {
             　　index: countquestion - 1,
             　　text: qtext
-        　　});
+        });
+        if (countquestion >= 1) {
+            // 0～(現在の参加ユーザー数-1) の乱数
+            const total = i;  // 参加人数 (loginでインクリメントされる)
+            const newQ = Math.floor(Math.random() * total);
+            questioner = newQ;
+            usermode = [0, 0, 0, 0];
+            usermode[questioner] = 1;
+            console.log("新しい出題者は: " + questioner);
+            io.emit("questioner decided", questioner);
+            io.emit("usermodes", usermode);
+        }
+
     　　} 
+
+
 　　　});
 
 
