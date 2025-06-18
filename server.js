@@ -16,7 +16,18 @@ let usermode = [0, 0, 0, 0];
 let connectedSockets = [];
 let countquestion=0;
 let questiontext=['','',''];
+let score=[0,0,0];
+//ゲーム用タイマー
 
+let counter = 0;       // ボタンの押下回数
+let timeLeft = 10;     // 初期制限時間（秒）
+
+
+// 1秒ごとに timeLeft を減らし、全クライアントへ配信
+setInterval(() => {
+  if (timeLeft > 0) timeLeft--;
+  io.emit('timer_update', {timeLeft, counter});
+}, 1000);
 
 io.on("connection", (socket) => {
     console.log("ユーザーが接続しました。");
@@ -35,15 +46,14 @@ io.on("connection", (socket) => {
         io.emit("cmessage", msg);
     });
 
-    socket.on("login", () => {
+    socket.on("login", (ack) => {
         socket.data.usernumber = i;
-         socket.emit("user number", socket.data.usernumber);
-         i++;
-         console.log(`${socket.data.usernumber}さんが参加しました。`);
+        socket.emit("user number", socket.data.usernumber);
+        i++;
+        console.log(`${socket.data.usernumber}さんが参加しました。`);
 
         // 他ユーザーに通知
         socket.broadcast.emit("user joined", `${socket.data.usernumber}さんが参加しました。`);
-
         // 4人目がログインしたら出題者を決定して送信
         if (i === 4) {
              questioner = r;
@@ -53,6 +63,8 @@ io.on("connection", (socket) => {
              io.emit("questioner decided", questioner);
              io.emit("usermodes", usermode);
         }
+
+        ack({number : socket.data.usernumber})//number:キー　socket.data.usernumber:バリュー　全体に送るのではなく個人だけに返すのであれば返り値として扱うことができる
     });
 
     socket.on("disconnect", () => {
@@ -88,6 +100,16 @@ io.on("connection", (socket) => {
 
 
 　　　});
+
+　　　 socket.emit('timer_update', {timeLeft, counter}); // 接続時に最新状態を送信
+
+  　　socket.on('clicked', () => {
+   　　 counter++;
+    　　timeLeft++; // 押されるたびに「残り時間を1秒延長」
+    　io.emit('timer_update', {timeLeft, counter});
+  　　});
+　　　
+
 
 
 

@@ -25,6 +25,11 @@
         　　　<button type="submit">質問を送信</button>
    　　　 </form>
 　　　</div>
+ 　　　<!-- 回答者：気になるボタン-->
+ 　　<button id="btn">クリックして時間を延長！</button>
+  　　　　　<p>時間残り: <span id="time">0</span>秒</p>
+  　　　　　<p>押した回数: <span id="cnt">0</span>回</p>
+
 
 
     <script src="/socket.io/socket.io.js"></script>
@@ -39,6 +44,14 @@
         const questionForm = document.getElementById("question-form");
 　　　　　const questionInput = document.getElementById("question-input");
 　　　　　const questionArea = document.getElementById("question-area");
+
+        //気になるボタン用
+         const btn = document.getElementById('btn');
+   　　　　const timeEl = document.getElementById('time');
+    　　　const cnt = document.getElementById('cnt');
+
+
+
 
         
 
@@ -127,11 +140,26 @@
 　　　　　socket.on("question rejected", (msg) => {
     　　　　　　　alert(msg);
 　　　　　});
+        //気になるボタン
+         btn.addEventListener('click', () => {
+      　　　　socket.emit('clicked');
+    　　　});
+
+    　　　socket.on('timer_update', data => {
+      　　　　timeEl.textContent = data.timeLeft;
+      　　　　cnt.textContent = data.counter;
+    　　　});
+
+
+
+
+
 
 
         // ページ読み込み時にログイン
         window.addEventListener("load", () => {
-            socket.emit("login");
+            socket.emit("login",(num)=>{console.log(num);
+            });
         });
     </script>
 </body>
