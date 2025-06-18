@@ -94,20 +94,21 @@
             socket.data.usernumber = num;
         });
 
-        socket.on("usermodes", (modes) => {
-           console.log("ユーザーモード:", modes);
-           const myNumber = socket.data?.usernumber;
-           if (myNumber !== undefined) { 
-            if (modes[myNumber] === 1) {
-              alert("あなたは出題者です！");
-              questionArea.style.display = "block"; 
-            } else {
-              alert("あなたは回答者です！");
-             
-              
-            }
-          }
-        });
+       socket.on("usermodes", (modes) => {
+    　　　　console.log("ユーザーモード:", modes);
+
+    　　　const myNumber = socket.data?.usernumber;
+    　　　if (myNumber === undefined) return; // 未定義なら処理しない
+
+    　　　if (modes[myNumber] === 1) {
+       　　　　　 alert("あなたは出題者です！");
+       　　　　　　 questionArea.style.display = "block";
+    　　} else {
+        　　alert("あなたは回答者です！");
+        　　questionArea.style.display = "none"; // 出題欄を非表示
+    　　}
+　　　});
+
 
         // 5人目のユーザーを拒否
         socket.on("login rejected", (msg) => {
