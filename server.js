@@ -224,10 +224,6 @@ io.on("connection", (socket) => {
     connectedSockets[usernumber] = socket;
     socket.data.usernumber = usernumber;
 
-    socket.on("chat message", (msg) => {
-        socket.data.username = msg;
-        io.emit("cmessage", msg);
-    });
 
     socket.on("login", (ack) => {
         handleLogin(socket, ack, usernumber);

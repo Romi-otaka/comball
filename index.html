@@ -14,9 +14,7 @@
     <div id="player-number"></div>
 
     <ul id="messages"></ul>
-    <form id="form" action="">
-        <input id="input" autocomplete="off" /><button>送信</button>
-    </form>
+  
 
     <!-- 出題者専用：質問入力欄 -->
 　　　<div id="question-area" style="display:none; margin-top: 20px;">
@@ -37,8 +35,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const form = document.getElementById("form");
-        const input = document.getElementById("input");
         const messages = document.getElementById("messages");
         const playerDisplay = document.getElementById("player-number");
 
@@ -56,21 +52,6 @@
 
         
 
-        // メッセージ送信
-        form.addEventListener("submit", function(e) {
-            e.preventDefault();
-            if (input.value) {
-                socket.emit("chat message", input.value);
-                input.value = "";
-            }
-        });
-
-        // メッセージ受信
-        socket.on("cmessage", function(msg) {
-            const item = document.createElement("li");
-            item.textContent = msg;
-            messages.appendChild(item);
-        });
 
         // 他ユーザー参加通知
         socket.on("user joined", function(msg) {
