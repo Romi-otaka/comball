@@ -133,22 +133,23 @@
             cnt.textContent = data.counter;
         });
 
-        socket.on("game finished", (questions) => {
-            alert("ゲーム終了！お疲れ様でした！");
-            const item = document.createElement("li");
-            item.textContent = "ゲーム終了！出題された質問一覧：";
-            messages.appendChild(item);
+        socket.on("game finished", ({ questions, answers }) => {
+    　　　　　　alert("ゲーム終了！お疲れ様でした！");
+    
+   　　　　　　 const item = document.createElement("li");
+   　　　　　　 item.textContent = "ゲーム終了！質問と最初の回答：";
+   　　　　　　 messages.appendChild(item);
+   　　　　　　　questions.forEach((q, i) => {
+        　　　　　　　　　const qItem = document.createElement("li");
+       　　　　　　　　　 qItem.textContent = `質問${i + 1}: ${q} / 回答: ${answers[i] || "未回答"}`;
+      　　　　　　　　　  qItem.style.color = "purple";
+      　　　　　　　　　  messages.appendChild(qItem);
+   　　　　　　　 });
 
-            questions.forEach((q, i) => {
-                const qItem = document.createElement("li");
-                qItem.textContent = `質問${i + 1}: ${q}`;
-                qItem.style.color = "purple";
-                messages.appendChild(qItem);
-            });
+   　　　　　　 questionArea.style.display = "none";
+    　　　　　btn.disabled = true;
+　　　　　});
 
-            questionArea.style.display = "none";
-            btn.disabled = true;
-        });
 
         window.addEventListener("load", () => {
             socket.emit("login", (num) => {

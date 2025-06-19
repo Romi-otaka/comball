@@ -15,6 +15,7 @@ let usermode = [0, 0, 0, 0];
 let connectedSockets = [null, null, null, null];
 let countquestion = 0;
 let questiontext = ['', '', ''];
+let answertext = ['', '', ''];
 let answeredThisPhase = false;
 let score = [0, 0, 0, 0];
 
@@ -80,11 +81,11 @@ function handleAnswerTimeout() {
 }
 
 function handleTimeUp() {
-    if (countquestion >= 3) {
-        io.emit("game finished", questiontext);
-        console.log("ゲーム終了: 質問3回完了");
-        return;
-    }
+　　　if (countquestion >= 3) {
+    　　　　io.emit("game finished", { questions: questiontext, answers: answertext });
+   　　　　 console.log("ゲーム終了: 質問3回完了");
+    　　　　return;
+　　　}
 
     const activeUsers = connectedSockets.map((s, i) => s ? i : null).filter(i => i !== null);
 
@@ -140,9 +141,22 @@ function handleSendQuestion(socket, qtext) {
 
 function handleSendAnswer(socket, answer) {
     const usernumber = socket.data.usernumber;
-    console.log(`ユーザー${usernumber}の回答: ${answer}`);
+    const qIndex = countquestion - 1;
+
+    if (qIndex >= 0 && qIndex < 3) {
+        // まだその質問に対して回答が保存されていない場合のみ保存
+        if (!answertext[qIndex]) {
+            answertext[qIndex] = answer;
+            console.log(`【記録】ユーザー${usernumber}の回答: ${answer}`);
+        } else {
+            console.log(`ユーザー${usernumber}の回答（記録済みのため保存せず）: ${answer}`);
+        }
+    }
+
+    // 通知はすべてに送信
     io.emit("answer received", { user: usernumber, text: answer });
 }
+
 
 function handleDisconnect(socket) {
     const usernumber = socket.data.usernumber;
