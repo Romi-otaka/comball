@@ -10,27 +10,27 @@
     </style>
 </head>
 <body>
-    <!-- プレイヤー番号表示 -->
     <div id="player-number"></div>
-
     <ul id="messages"></ul>
-  
 
-    <!-- 出題者専用：質問入力欄 -->
-　　　<div id="question-area" style="display:none; margin-top: 20px;">
-    　　　<form id="question-form">
-        　　　<input type="text" id="question-input" placeholder="質問を入力" />
-        　　　<button type="submit">質問を送信</button>
-   　　　 </form>
-　　　</div>
- 　　　<!-- 回答者：気になるボタン-->
- 　　<button id="btn">クリックして時間を延長！</button>
-　　　　　　<p>回答タイム残り: <span id="ans-time">0</span>秒</p>
-　　　　　　<p>深掘りタイム残り: <span id="deep-time">0</span>秒</p>
-　　　　　　<p>押した回数: <span id="cnt">0</span>回</p>
+    <div id="question-area" style="display:none; margin-top: 20px;">
+        <form id="question-form">
+            <input type="text" id="question-input" placeholder="質問を入力" />
+            <button type="submit">質問を送信</button>
+        </form>
+    </div>
 
+    <div id="answer-area" style="display: none; margin-top: 20px;">
+        <form id="answer-form">
+            <input type="text" id="answer-input" placeholder="回答を入力" />
+            <button type="submit">回答を送信</button>
+        </form>
+    </div>
 
-
+    <button id="btn">クリックして時間を延長！</button>
+    <p>回答タイム残り: <span id="ans-time">0</span>秒</p>
+    <p>深掘りタイム残り: <span id="deep-time">0</span>秒</p>
+    <p>押した回数: <span id="cnt">0</span>回</p>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -38,22 +38,21 @@
         const messages = document.getElementById("messages");
         const playerDisplay = document.getElementById("player-number");
 
-        //質問フォーム用
         const questionForm = document.getElementById("question-form");
-　　　　　const questionInput = document.getElementById("question-input");
-　　　　　const questionArea = document.getElementById("question-area");
+        const questionInput = document.getElementById("question-input");
+        const questionArea = document.getElementById("question-area");
 
-        //気になるボタン用
-         const btn = document.getElementById('btn');
-         const ansTimeEl = document.getElementById('ans-time');
-         const deepTimeEl = document.getElementById('deep-time');
-         const cnt = document.getElementById('cnt');
+        const answerForm = document.getElementById("answer-form");
+        const answerInput = document.getElementById("answer-input");
+        const answerArea = document.getElementById("answer-area");
 
+        const btn = document.getElementById('btn');
+        const ansTimeEl = document.getElementById('ans-time');
+        const deepTimeEl = document.getElementById('deep-time');
+        const cnt = document.getElementById('cnt');
 
-        
+        let currentQuestioner = null;
 
-
-        // 他ユーザー参加通知
         socket.on("user joined", function(msg) {
             const item = document.createElement("li");
             item.textContent = msg;
@@ -61,109 +60,99 @@
             messages.appendChild(item);
         });
 
-        // 出題者決定
-        socket.on("questioner decided", function(questioner) {
-            const item = document.createElement("li");
-            item.textContent = `出題者は ${questioner} 番のユーザーです`;
-            item.style.color = "red";
-            messages.appendChild(item);
-        });
-
-        // 自分のユーザー番号表示
         socket.on("user number", (num) => {
             playerDisplay.textContent = `あなたは ${num} 番目のプレイヤーです`;
             socket.data = socket.data || {};
             socket.data.usernumber = num;
         });
 
-       socket.on("usermodes", (modes) => {
-    　　　　console.log("ユーザーモード:", modes);
+        socket.on("questioner decided", function(questioner) {
+            currentQuestioner = questioner;
 
-    　　　const myNumber = socket.data?.usernumber;
-    　　　if (myNumber === undefined) return; // 未定義なら処理しない
-
-    　　　if (modes[myNumber] === 1) {
-       　　　　　 alert("あなたは出題者です！");
-       　　　　　　 questionArea.style.display = "block";
-    　　} else {
-        　　alert("あなたは回答者です！");
-        　　questionArea.style.display = "none"; // 出題欄を非表示
-    　　}
-　　　});
-
-
-        // 5人目のユーザーを拒否
-        socket.on("login rejected", (msg) => {
-            alert(msg);
-            document.body.innerHTML = "<h2 style='color:red;'>" + msg + "</h2>";
+            const item = document.createElement("li");
+            item.textContent = `出題者は ${questioner} 番のユーザーです`;
+            item.style.color = "red";
+            messages.appendChild(item);
         });
+
+        socket.on("usermodes", (modes) => {
+            const myNumber = socket.data?.usernumber;
+            if (myNumber === undefined) return;
+
+            if (modes[myNumber] === 1) {
+                alert("あなたは出題者です！");
+                questionArea.style.display = "block";
+                answerArea.style.display = "none";
+            } else {
+                alert("あなたは回答者です！");
+                questionArea.style.display = "none";
+            }
+        });
+
+        socket.on("new question", ({ index, text }) => {
+            const item = document.createElement("li");
+            item.textContent = `質問${index + 1}: ${text}`;
+            item.style.color = "purple";
+            messages.appendChild(item);
+
+            if (socket.data.usernumber !== undefined && socket.data.usernumber !== currentQuestioner) {
+                answerArea.style.display = "block";
+            }
+        });
+
         questionForm.addEventListener("submit", (e) => {
-    　　　　　e.preventDefault();
-    　　　　　const q = questionInput.value.trim();
-    　　　　　if (q) {
-        　　　　socket.emit("send question", q);
-        　　　　questionInput.value = "";
-    　　　　　}
-　　　　　});
+            e.preventDefault();
+            const q = questionInput.value.trim();
+            if (q) {
+                socket.emit("send question", q);
+                questionInput.value = "";
+            }
+        });
 
+        answerForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const answer = answerInput.value.trim();
+            if (answer) {
+                socket.emit("send answer", answer);
+                answerInput.value = "";
+                answerArea.style.display = "none";
+            }
+        });
 
+        socket.on("question rejected", (msg) => {
+            alert(msg);
+        });
 
+        btn.addEventListener('click', () => {
+            socket.emit('clicked');
+        });
 
+        socket.on('timer_update', data => {
+            ansTimeEl.textContent = data.anstimer;
+            deepTimeEl.textContent = data.timeLeft;
+            cnt.textContent = data.counter;
+        });
 
+        socket.on("game finished", (questions) => {
+            alert("ゲーム終了！お疲れ様でした！");
+            const item = document.createElement("li");
+            item.textContent = "ゲーム終了！出題された質問一覧：";
+            messages.appendChild(item);
 
-        // 質問を受け取って画面に表示
-　　　　　socket.on("new question", ({ index, text }) => {
-    　　　　　　　const item = document.createElement("li");
-    　　　　　　　item.textContent = `質問${index + 1}: ${text}`;
-    　　　　　　　item.style.color = "purple";
-   　　　　　　　 messages.appendChild(item);
-　　　　　});
+            questions.forEach((q, i) => {
+                const qItem = document.createElement("li");
+                qItem.textContent = `質問${i + 1}: ${q}`;
+                qItem.style.color = "purple";
+                messages.appendChild(qItem);
+            });
 
-　　　　　// 質問制限エラーを表示
-　　　　　socket.on("question rejected", (msg) => {
-    　　　　　　　alert(msg);
-　　　　　});
-        //気になるボタン
-         btn.addEventListener('click', () => {
-      　　　　socket.emit('clicked');
-    　　　});
+            questionArea.style.display = "none";
+            btn.disabled = true;
+        });
 
-    　　socket.on('timer_update', data => {
-    　　　　ansTimeEl.textContent = data.anstimer;
-    　　　　deepTimeEl.textContent = data.timeLeft;
-    　　　　cnt.textContent = data.counter;
-　　　　　});
-　　　　　　
-
-　　　　　socket.on("game finished", (questions) => {
-   　　　　　　 alert("ゲーム終了！お疲れ様でした！");
-    　　　　　　const item = document.createElement("li");
-    　　　　　　item.textContent = "ゲーム終了！出題された質問一覧：";
-    　　　　　　messages.appendChild(item);
-
-   　　　　　　 questions.forEach((q, i) => {
-    　　　　　　　　　const qItem = document.createElement("li");
-       　　　　　　　 qItem.textContent = `質問${i + 1}: ${q}`;
-      　　　　　　　  qItem.style.color = "purple";
-        　　　　　　　messages.appendChild(qItem);
-    　　　　　　});
-
-    　　　　　　questionArea.style.display = "none";
-   　　　　　　 btn.disabled = true;
-　　　　　});
-
-
-
-
-
-
-
-
-
-
-        // ページ読み込み時にログイン
         window.addEventListener("load", () => {
-            socket.emit("login",(num)=>{console.log(num);
+            socket.emit("login", (num) => {
+                console.log(num);
             });
         });
     </script>

@@ -9,26 +9,21 @@ app.get("/", (req, res) => {
     res.sendFile(__dirname + "/index.html");
 });
 
-let r = Math.floor(Math.random() * 4);  // 出題者候補（0〜3）
+let r = Math.floor(Math.random() * 4);
 let questioner;
 let usermode = [0, 0, 0, 0];
 let connectedSockets = [null, null, null, null];
 let countquestion = 0;
 let questiontext = ['', '', ''];
-let answeredThisPhase = false; // ← フェーズ中に質問済みかどうか
+let answeredThisPhase = false;
 let score = [0, 0, 0, 0];
 
-// タイマーと制御フラグ
 let counter = 0;
 let timeLeft = 30;
 let anstimer = 0;
 
 let isAnswerTimeActive = false;
 let isGameTimeActive = false;
-
-
-
-
 
 // ログイン処理
 function handleLogin(socket, ack, usernumber) {
@@ -50,8 +45,6 @@ function handleLogin(socket, ack, usernumber) {
     ack({ number: usernumber });
 }
 
-
-// 回答タイマー処理
 function updateAnswerTimer() {
     if (isAnswerTimeActive && anstimer > 0) {
         anstimer--;
@@ -62,8 +55,6 @@ function updateAnswerTimer() {
     }
 }
 
-
-// 深掘りタイマー処理
 function updateGameTimer() {
     if (isGameTimeActive && timeLeft > 0) {
         timeLeft--;
@@ -77,34 +68,25 @@ function updateGameTimer() {
     }
 }
 
-
-// 回答タイマー終了処理 → 深掘りタイマー開始
 function handleAnswerTimeout() {
     console.log("回答時間が終了しました！");
     io.emit("answer_time_up");
 
     isAnswerTimeActive = false;
 
-    // 深掘りタイマー開始
     timeLeft = 30;
     counter = 0;
     isGameTimeActive = true;
 }
 
-
-// 深掘りタイマー終了処理 → 出題者交代
-
-
 function handleTimeUp() {
     if (countquestion >= 3) {
-        io.emit("game finished", questiontext); // ゲーム終了を通知
+        io.emit("game finished", questiontext);
         console.log("ゲーム終了: 質問3回完了");
         return;
     }
 
-    const activeUsers = connectedSockets
-        .map((s, index) => s ? index : null)
-        .filter(i => i !== null);
+    const activeUsers = connectedSockets.map((s, i) => s ? i : null).filter(i => i !== null);
 
     if (activeUsers.length > 0) {
         const newQ = activeUsers[Math.floor(Math.random() * activeUsers.length)];
@@ -114,13 +96,10 @@ function handleTimeUp() {
         console.log("新しい出題者: " + questioner);
         io.emit("questioner decided", questioner);
         io.emit("usermodes", usermode);
-        answeredThisPhase = false;  // 次フェーズで質問可能に戻す
+        answeredThisPhase = false;
     }
 }
 
-
-
-// クリックで深掘り時間延長
 function handleClick(socket) {
     if (isGameTimeActive) {
         counter++;
@@ -129,8 +108,6 @@ function handleClick(socket) {
     }
 }
 
-
-// 質問送信処理 → 回答タイマー開始
 function handleSendQuestion(socket, qtext) {
     const usernumber = socket.data.usernumber;
 
@@ -158,15 +135,15 @@ function handleSendQuestion(socket, qtext) {
         anstimer = 20;
         isAnswerTimeActive = true;
         isGameTimeActive = false;
-
-    } else {
-        console.log(`ユーザー${usernumber}は出題者ではないため質問できません。`);
     }
 }
 
+function handleSendAnswer(socket, answer) {
+    const usernumber = socket.data.usernumber;
+    console.log(`ユーザー${usernumber}の回答: ${answer}`);
+    io.emit("answer received", { user: usernumber, text: answer });
+}
 
-
-// 切断処理
 function handleDisconnect(socket) {
     const usernumber = socket.data.usernumber;
 
@@ -183,21 +160,15 @@ function handleDisconnect(socket) {
     }
 }
 
-
-// 空きスロット取得
 function getAvailableUserNumber() {
     return connectedSockets.findIndex(s => s === null);
 }
 
-
-// 定員オーバー拒否
 function rejectConnectionFull(socket) {
     socket.emit("login rejected", "これ以上参加できません。定員に達しています。");
     socket.disconnect(true);
 }
 
-
-// タイマー更新
 setInterval(() => {
     updateAnswerTimer();
     updateGameTimer();
@@ -209,8 +180,6 @@ setInterval(() => {
     });
 }, 1000);
 
-
-// 接続処理
 io.on("connection", (socket) => {
     console.log("ユーザーが接続しました。");
 
@@ -224,7 +193,6 @@ io.on("connection", (socket) => {
     connectedSockets[usernumber] = socket;
     socket.data.usernumber = usernumber;
 
-
     socket.on("login", (ack) => {
         handleLogin(socket, ack, usernumber);
     });
@@ -237,11 +205,14 @@ io.on("connection", (socket) => {
         handleSendQuestion(socket, qtext);
     });
 
+    socket.on("send answer", (answer) => {
+        handleSendAnswer(socket, answer);
+    });
+
     socket.on("clicked", () => {
         handleClick(socket);
     });
 
-    // 最初のタイマー情報送信
     socket.emit("timer_update", { timeLeft, counter, anstimer });
 });
 
