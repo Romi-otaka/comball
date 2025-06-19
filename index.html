@@ -152,6 +152,27 @@
     　　　　deepTimeEl.textContent = data.timeLeft;
     　　　　cnt.textContent = data.counter;
 　　　　　});
+　　　　　　
+
+　　　　　socket.on("game finished", (questions) => {
+   　　　　　　 alert("ゲーム終了！お疲れ様でした！");
+    　　　　　　const item = document.createElement("li");
+    　　　　　　item.textContent = "ゲーム終了！出題された質問一覧：";
+    　　　　　　messages.appendChild(item);
+
+   　　　　　　 questions.forEach((q, i) => {
+    　　　　　　　　　const qItem = document.createElement("li");
+       　　　　　　　 qItem.textContent = `質問${i + 1}: ${q}`;
+      　　　　　　　  qItem.style.color = "purple";
+        　　　　　　　messages.appendChild(qItem);
+    　　　　　　});
+
+    　　　　　　questionArea.style.display = "none";
+   　　　　　　 btn.disabled = true;
+　　　　　});
+
+
+
 
 
 

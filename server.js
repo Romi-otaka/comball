@@ -15,6 +15,7 @@ let usermode = [0, 0, 0, 0];
 let connectedSockets = [null, null, null, null];
 let countquestion = 0;
 let questiontext = ['', '', ''];
+let answeredThisPhase = false; // ← フェーズ中に質問済みかどうか
 let score = [0, 0, 0, 0];
 
 // タイマーと制御フラグ
@@ -24,6 +25,9 @@ let anstimer = 0;
 
 let isAnswerTimeActive = false;
 let isGameTimeActive = false;
+
+
+
 
 
 // ログイン処理
@@ -89,7 +93,15 @@ function handleAnswerTimeout() {
 
 
 // 深掘りタイマー終了処理 → 出題者交代
+
+
 function handleTimeUp() {
+    if (countquestion >= 3) {
+        io.emit("game finished", questiontext); // ゲーム終了を通知
+        console.log("ゲーム終了: 質問3回完了");
+        return;
+    }
+
     const activeUsers = connectedSockets
         .map((s, index) => s ? index : null)
         .filter(i => i !== null);
@@ -99,12 +111,13 @@ function handleTimeUp() {
         questioner = newQ;
         usermode = [0, 0, 0, 0];
         usermode[questioner] = 1;
-        console.log("時間切れによる新しい出題者は: " + questioner);
+        console.log("新しい出題者: " + questioner);
         io.emit("questioner decided", questioner);
         io.emit("usermodes", usermode);
-        countquestion = 0; // 質問カウントもリセット
+        answeredThisPhase = false;  // 次フェーズで質問可能に戻す
     }
 }
+
 
 
 // クリックで深掘り時間延長
@@ -121,14 +134,20 @@ function handleClick(socket) {
 function handleSendQuestion(socket, qtext) {
     const usernumber = socket.data.usernumber;
 
+    if (countquestion >= 3) {
+        socket.emit("question rejected", "ゲームは終了しました（最大3問）。");
+        return;
+    }
+
     if (usernumber === questioner) {
-        if (countquestion >= 3) {
-            socket.emit("question rejected", "質問は3つまでです");
+        if (answeredThisPhase) {
+            socket.emit("question rejected", "このフェーズではすでに質問済みです。");
             return;
         }
 
         questiontext[countquestion] = qtext;
         countquestion++;
+        answeredThisPhase = true;
         console.log(`質問${countquestion}: ${qtext}`);
 
         io.emit("new question", {
@@ -136,14 +155,15 @@ function handleSendQuestion(socket, qtext) {
             text: qtext
         });
 
-        // 回答タイマー開始
         anstimer = 20;
         isAnswerTimeActive = true;
         isGameTimeActive = false;
+
     } else {
         console.log(`ユーザー${usernumber}は出題者ではないため質問できません。`);
     }
 }
+
 
 
 // 切断処理
