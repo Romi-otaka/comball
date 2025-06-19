@@ -20,6 +20,8 @@ let score = [0, 0, 0, 0];
 // ゲーム用タイマー
 let counter = 0;
 let timeLeft = 30;
+//回答用タイマー
+let anstimer=20;
 
 setInterval(() => {
     if (timeLeft > 0) {
