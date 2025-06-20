@@ -160,6 +160,15 @@
     　　　　}
 　　　　　});
 
+
+　　　　socket.on("answer received", ({ user, text }) => {
+    　　　　　const item = document.createElement("li");
+    　　　　　item.textContent = `ユーザー${user}の回答: ${text}`;
+   　　　　　 item.style.color = "green";
+  　　　　　　  messages.appendChild(item);
+　　　　});
+　
+
         socket.on("game finished", ({ questions, answers }) => {
     　　　　　　alert("ゲーム終了！お疲れ様でした！");
     
