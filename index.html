@@ -32,6 +32,9 @@
     <p>深掘りタイム残り: <span id="deep-time">0</span>秒</p>
     <p>押した回数: <span id="cnt">0</span>回</p>
 
+    <p>スコア: <span id="score">0</span>点</p>
+
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -50,8 +53,15 @@
         const ansTimeEl = document.getElementById('ans-time');
         const deepTimeEl = document.getElementById('deep-time');
         const cnt = document.getElementById('cnt');
-
+ 　　　　const scoreEl = document.getElementById("score");
         let currentQuestioner = null;
+
+
+
+
+
+
+
 
         socket.on("user joined", function(msg) {
             const item = document.createElement("li");
@@ -135,11 +145,14 @@
             socket.emit('clicked');
         });
 
-        socket.on('timer_update', data => {
-            ansTimeEl.textContent = data.anstimer;
-            deepTimeEl.textContent = data.timeLeft;
-            cnt.textContent = data.counter;
-        });
+       socket.on('timer_update', data => {
+    　　　　ansTimeEl.textContent = data.anstimer;
+    　　　　deepTimeEl.textContent = data.timeLeft;
+    　　　　cnt.textContent = data.counter;
+    　　　　if (data.score !== undefined) {
+        　　　　scoreEl.textContent = data.score;
+    　　　　}
+　　　　　});
 
         socket.on("game finished", ({ questions, answers }) => {
     　　　　　　alert("ゲーム終了！お疲れ様でした！");

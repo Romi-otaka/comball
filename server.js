@@ -17,24 +17,21 @@ let countquestion = 0;
 let questiontext = ['', '', ''];
 let answertext = ['', '', ''];
 let answeredThisPhase = false;
-let score = [0, 0, 0, 0];
+let nextQuestioner = null;
 
 let counter = 0;
 let timeLeft = 30;
 let anstimer = 0;
-
 let isAnswerTimeActive = false;
 let isGameTimeActive = false;
+let clickedCount = [0, 0, 0, 0]; // ← 各プレイヤーのクリック数
+
+let score = [0, 0, 0, 0]; // 各プレイヤーのスコア
 
 
-let nextQuestioner = null;  // ← 最初に回答した人を記録
-
-
-// ログイン処理
 function handleLogin(socket, ack, usernumber) {
     socket.emit("user number", usernumber);
     console.log(`${usernumber}さんが参加しました。`);
-
     socket.broadcast.emit("user joined", `${usernumber}さんが参加しました。`);
 
     const currentUsers = connectedSockets.filter(s => s !== null).length;
@@ -54,7 +51,6 @@ function updateAnswerTimer() {
     if (isAnswerTimeActive && anstimer > 0) {
         anstimer--;
     }
-
     if (isAnswerTimeActive && anstimer === 0) {
         handleAnswerTimeout();
     }
@@ -64,7 +60,6 @@ function updateGameTimer() {
     if (isGameTimeActive && timeLeft > 0) {
         timeLeft--;
     }
-
     if (isGameTimeActive && timeLeft === 0) {
         handleTimeUp();
         timeLeft = 30;
@@ -76,13 +71,12 @@ function updateGameTimer() {
 function handleAnswerTimeout() {
     console.log("回答時間が終了しました！");
     io.emit("answer_time_up");
-
     isAnswerTimeActive = false;
-
     timeLeft = 30;
     counter = 0;
     isGameTimeActive = true;
 }
+
 function handleTimeUp() {
     if (countquestion >= 3) {
         io.emit("game finished", { questions: questiontext, answers: answertext });
@@ -90,7 +84,6 @@ function handleTimeUp() {
         return;
     }
 
-    // 出題者を nextQuestioner に設定
     if (nextQuestioner !== null && connectedSockets[nextQuestioner]) {
         questioner = nextQuestioner;
     } else {
@@ -111,15 +104,33 @@ function handleTimeUp() {
     io.emit("usermodes", usermode);
 
     answeredThisPhase = false;
-    nextQuestioner = null;  // リセット
+    nextQuestioner = null;
+    clickedCount = [0, 0, 0, 0]; // 各フェーズの最初でリセット
 }
 
 function handleClick(socket) {
-    if (isGameTimeActive) {
-        counter++;
+    const usernumber = socket.data.usernumber;
+    if (usernumber === undefined) return;
+
+    clickedCount[usernumber]++;
+    score[usernumber] += 5;  // ⭐ スコア加算
+
+    const totalClicks = clickedCount.reduce((a, b) => a + b, 0);
+
+    if (isGameTimeActive && totalClicks % 3 === 0) {
         timeLeft++;
-        io.emit('timer_update', { timeLeft, counter, anstimer });
     }
+
+    connectedSockets.forEach((sock, idx) => {
+        if (sock) {
+            sock.emit('timer_update', {
+                timeLeft,
+                counter: clickedCount[idx],
+                anstimer,
+                score: score[idx]  // ⭐ スコアをクライアントに送信
+            });
+        }
+    });
 }
 
 function handleSendQuestion(socket, qtext) {
@@ -159,13 +170,11 @@ function handleSendAnswer(socket, answer) {
     if (qIndex >= 0 && qIndex < 3) {
         if (!answertext[qIndex]) {
             answertext[qIndex] = answer;
-            nextQuestioner = usernumber;  // ← 最初に回答した人を記録
+            nextQuestioner = usernumber;
             console.log(`【記録】ユーザー${usernumber}の回答: ${answer}`);
-
             isAnswerTimeActive = false;
             io.emit("answer locked", { user: usernumber });
-
-            handleAnswerTimeout();  // → 次へ進む
+            handleAnswerTimeout();
         } else {
             console.log(`ユーザー${usernumber}の回答（記録済みのため保存せず）: ${answer}`);
         }
@@ -174,21 +183,14 @@ function handleSendAnswer(socket, answer) {
     io.emit("answer received", { user: usernumber, text: answer });
 }
 
-  
-
-
-
 function handleDisconnect(socket) {
     const usernumber = socket.data.usernumber;
-
     if (usernumber !== undefined && connectedSockets[usernumber]) {
         connectedSockets[usernumber] = null;
-
         if (questioner === usernumber) {
             questioner = null;
             io.emit("questioner decided", null);
         }
-
         io.emit("user left", usernumber);
         console.log(`ユーザー${usernumber}が切断しました。`);
     }
@@ -202,23 +204,28 @@ function rejectConnectionFull(socket) {
     socket.emit("login rejected", "これ以上参加できません。定員に達しています。");
     socket.disconnect(true);
 }
-
 setInterval(() => {
     updateAnswerTimer();
     updateGameTimer();
 
-    io.emit('timer_update', {
-        timeLeft,
-        counter,
-        anstimer
+    connectedSockets.forEach((sock, idx) => {
+        if (sock) {
+            sock.emit("timer_update", {
+                timeLeft,
+                counter: clickedCount[idx],
+                anstimer,
+                score: score[idx]
+            });
+        }
     });
-}, 1000);
+}, 1000); // 毎秒送信
+
+
 
 io.on("connection", (socket) => {
     console.log("ユーザーが接続しました。");
 
     const usernumber = getAvailableUserNumber();
-
     if (usernumber === -1) {
         rejectConnectionFull(socket);
         return;
@@ -247,7 +254,11 @@ io.on("connection", (socket) => {
         handleClick(socket);
     });
 
-    socket.emit("timer_update", { timeLeft, counter, anstimer });
+    socket.emit("timer_update", {
+        timeLeft,
+        counter: clickedCount[usernumber],
+        anstimer
+    });
 });
 
 server.listen(PORT, () => {
