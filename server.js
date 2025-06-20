@@ -115,6 +115,12 @@ function handleClick(socket) {
     clickedCount[usernumber]++;
     score[usernumber] += 5;  // ⭐ スコア加算
 
+     // ⭐ 質問者に +1点（自分が質問者なら加算しない）
+    if (questioner !== undefined && questioner !== usernumber) {
+        score[questioner] += 1;
+    }
+
+
     const totalClicks = clickedCount.reduce((a, b) => a + b, 0);
 
     if (isGameTimeActive && totalClicks % 3 === 0) {
