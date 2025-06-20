@@ -72,10 +72,36 @@ function handleAnswerTimeout() {
     console.log("回答時間が終了しました！");
     io.emit("answer_time_up");
     isAnswerTimeActive = false;
-    timeLeft = 30;
-    counter = 0;
-    isGameTimeActive = true;
+
+    // 誰も回答していなかった場合
+    const qIndex = countquestion - 1;
+    if (!answertext[qIndex]) {
+        console.log("誰も回答しなかったため、回答者全員が3点減点されます。");
+
+        // 回答者全員を減点（usermode = 0 のユーザー）
+        for (let i = 0; i < 4; i++) {
+            if (i !== questioner && connectedSockets[i]) {
+                score[i] -= 3;
+                if (score[i] < 0) score[i] = 0; // スコアがマイナスにならないようにする
+            }
+        }
+
+        // 質問数を戻す（カウントしない）
+        countquestion--;
+
+        // 次の質問は同じ質問者が再度入力できるようにする
+        answeredThisPhase = false;
+
+        // UIリセット通知（再度質問できるように）
+        io.to(connectedSockets[questioner].id).emit("retry_question");  // 質問者だけに通知
+    } else {
+        // 通常の深掘りタイムへ
+        timeLeft = 30;
+        counter = 0;
+        isGameTimeActive = true;
+    }
 }
+
 
 function handleTimeUp() {
     if (countquestion >= 3) {

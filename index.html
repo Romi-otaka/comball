@@ -62,6 +62,12 @@
 
 
 
+        socket.on("retry_question", () => {
+   　　　　　　 alert("誰も回答しなかったため、もう一度質問を入力してください！");
+   　　　　　　 questionArea.style.display = "block";  // 質問入力フォームを再表示
+　　　　　});
+
+
 
         socket.on("user joined", function(msg) {
             const item = document.createElement("li");
