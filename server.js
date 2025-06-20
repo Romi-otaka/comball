@@ -26,6 +26,10 @@ let anstimer = 0;
 let isAnswerTimeActive = false;
 let isGameTimeActive = false;
 
+
+let nextQuestioner = null;  // ← 最初に回答した人を記録
+
+
 // ログイン処理
 function handleLogin(socket, ack, usernumber) {
     socket.emit("user number", usernumber);
@@ -79,26 +83,35 @@ function handleAnswerTimeout() {
     counter = 0;
     isGameTimeActive = true;
 }
-
 function handleTimeUp() {
-　　　if (countquestion >= 3) {
-    　　　　io.emit("game finished", { questions: questiontext, answers: answertext });
-   　　　　 console.log("ゲーム終了: 質問3回完了");
-    　　　　return;
-　　　}
-
-    const activeUsers = connectedSockets.map((s, i) => s ? i : null).filter(i => i !== null);
-
-    if (activeUsers.length > 0) {
-        const newQ = activeUsers[Math.floor(Math.random() * activeUsers.length)];
-        questioner = newQ;
-        usermode = [0, 0, 0, 0];
-        usermode[questioner] = 1;
-        console.log("新しい出題者: " + questioner);
-        io.emit("questioner decided", questioner);
-        io.emit("usermodes", usermode);
-        answeredThisPhase = false;
+    if (countquestion >= 3) {
+        io.emit("game finished", { questions: questiontext, answers: answertext });
+        console.log("ゲーム終了: 質問3回完了");
+        return;
     }
+
+    // 出題者を nextQuestioner に設定
+    if (nextQuestioner !== null && connectedSockets[nextQuestioner]) {
+        questioner = nextQuestioner;
+    } else {
+        const activeUsers = connectedSockets.map((s, i) => s ? i : null).filter(i => i !== null);
+        if (activeUsers.length > 0) {
+            questioner = activeUsers[Math.floor(Math.random() * activeUsers.length)];
+        } else {
+            console.log("出題者を選べませんでした。");
+            return;
+        }
+    }
+
+    usermode = [0, 0, 0, 0];
+    usermode[questioner] = 1;
+    console.log("新しい出題者: " + questioner);
+
+    io.emit("questioner decided", questioner);
+    io.emit("usermodes", usermode);
+
+    answeredThisPhase = false;
+    nextQuestioner = null;  // リセット
 }
 
 function handleClick(socket) {
@@ -144,18 +157,25 @@ function handleSendAnswer(socket, answer) {
     const qIndex = countquestion - 1;
 
     if (qIndex >= 0 && qIndex < 3) {
-        // まだその質問に対して回答が保存されていない場合のみ保存
         if (!answertext[qIndex]) {
             answertext[qIndex] = answer;
+            nextQuestioner = usernumber;  // ← 最初に回答した人を記録
             console.log(`【記録】ユーザー${usernumber}の回答: ${answer}`);
+
+            isAnswerTimeActive = false;
+            io.emit("answer locked", { user: usernumber });
+
+            handleAnswerTimeout();  // → 次へ進む
         } else {
             console.log(`ユーザー${usernumber}の回答（記録済みのため保存せず）: ${answer}`);
         }
     }
 
-    // 通知はすべてに送信
     io.emit("answer received", { user: usernumber, text: answer });
 }
+
+  
+
 
 
 function handleDisconnect(socket) {

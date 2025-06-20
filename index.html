@@ -123,6 +123,14 @@
             alert(msg);
         });
 
+
+
+        socket.on("answer locked", ({ user }) => {
+   　　　　　　　 alert(`ユーザー${user}の回答が受け付けられました。回答タイム終了です。`);
+    　　　　　　　answerArea.style.display = "none";
+　　　　　});
+
+
         btn.addEventListener('click', () => {
             socket.emit('clicked');
         });
