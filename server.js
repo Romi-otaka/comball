@@ -39,8 +39,6 @@ app.use(cors(corsOptions));
 // 静的ファイル（public/index.html など）
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-
 // ルートアクセスで index.html を返す
 app.get('/dev', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
