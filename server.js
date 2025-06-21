@@ -1,13 +1,59 @@
 const express = require("express");
-const app = express();
-const http = require("http");
-const server = http.createServer(app);
-const io = require("socket.io")(server);
-const PORT = 3001;
+const path = require('path');
+const cors = require('cors')
 
-app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/index.html");
+const app = express();
+
+// frontendのurl
+const FRONTEND_URL = 'https://172.16.11.66:5173'
+
+// HTTPS用
+const https = require('https');
+const fs = require('fs');
+
+// SSL/TLS証明書を読み込む
+const options = {
+  key: fs.readFileSync('./cert/server.key'), // 秘密鍵
+  cert: fs.readFileSync('./cert/server.crt') // 証明書
+};
+
+// cors用設定用の変数
+const corsOptions = {
+  origin: FRONTEND_URL, // 許可したいオリジンを指定
+  credentials: true, 
+  optionsSuccessStatus: 200
+}
+const socketOptions = {
+  cors: {
+    origin: function (origin, fn) {
+      const isTarget = origin !== undefined && origin.match(FRONTEND_URL) !== null;
+      return isTarget ? fn(null, origin) : fn('error invalid domain');
+    },
+    credentials: true
+  }
+};
+
+// cors設定
+app.use(cors(corsOptions));
+
+// 静的ファイル（public/index.html など）
+app.use(express.static(path.join(__dirname, 'public')));
+
+
+
+// ルートアクセスで index.html を返す
+app.get('/dev', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// HTTPSサーバ起動
+const PORT = 8443
+const server = https.createServer(options, app).listen(PORT, () => {
+  console.log(`✅ HTTPSサーバ起動: https://localhost:${PORT}`);
+});
+
+// socket.io読み込み
+const io = require("socket.io")(server,socketOptions);
 
 let i = 0;
 let r = Math.floor(Math.random() * 4);  // 0〜3 のランダム
@@ -16,7 +62,6 @@ let usermode = [0, 0, 0, 0];
 let connectedSockets = [];
 let countquestion=0;
 let questiontext=['','',''];
-
 
 io.on("connection", (socket) => {
     console.log("ユーザーが接続しました。");
@@ -78,8 +123,3 @@ io.on("connection", (socket) => {
 
 
 });
-
-server.listen(PORT, () => {
-    console.log(`listening on ${PORT}`);
-});
-
