@@ -1,124 +1,192 @@
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
-
-// ポート番号
 const PORT = 8443;
 
-// HTTPS用
-const http = require("http");
-const fs = require("fs");
-
-// SSL/TLS証明書を読み込む
-const options = {
-  key: fs.readFileSync("./cert/localhost+1-key.pem"), // 秘密鍵
-  cert: fs.readFileSync("./cert/localhost+1.pem"), // 証明書
-};
-
-// cors用設定用の変数
 const corsOptions = {
-  origin: "*", // 許可したいオリジンを指定
+  origin: "*",
   credentials: true,
   methods: ["GET", "POST"],
   optionsSuccessStatus: 200,
 };
-const socketOptions = {
-  cors: {
-    origin: "*", // 許可したいオリジンを指定
-    credentials: true,
-  },
-};
 
-// cors設定
 app.use(cors(corsOptions));
-
-// 静的ファイル（public/index.html など）
 app.use(express.static(path.join(__dirname, "public")));
 
-// ルートアクセスで index.html を返す
 app.get("/dev", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// HTTPSサーバ起動
+// httpサーバーを使用 (httpsの場合は https.createServer(options, app))
 const server = http.createServer(app);
 
-// socket.io読み込み
-const io = require("socket.io")(server, socketOptions);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    credentials: true,
+  },
+});
 
-let i = 0;
-let r = Math.floor(Math.random() * 4); // 0〜3 のランダム
-r = 3; // デバッグ用に出題者を固定
-let questioner;
-let usermode = [0, 0, 0, 0];
-let connectedSockets = [];
-let countquestion = 0;
-let questiontext = ["", "", ""];
+
+// --- サーバーの状態を管理する変数 ---
+const gameState = {
+  players: new Map(), // Map<userNumber, playerData>
+  playerNumberCounter: 0,
+  maxPlayers: 4,
+  questioner: null,
+  usermode: [],
+  questiontext: ["", "", ""],
+  countquestion: 0,
+  gameStarted: false,
+};
+
+// ルーム名定義
+const HOST_ROOM = 'host_room';
 
 io.on("connection", (socket) => {
-  console.log("ユーザーが接続しました。");
+  // 接続時にクエリパラメータで役割を判断
+  const role = socket.handshake.query.role;
 
-  if (connectedSockets.length >= 4) {
-    socket.emit(
-      "login rejected",
-      "これ以上参加できません。定員に達しています。"
-    );
-    socket.disconnect(true); // 強制切断
-    return; // それ以上の処理をしない
+  // ===== ホストの接続処理 =====
+  if (role === 'host') {
+    handleHostConnection(socket);
+  }
+  // ===== プレイヤーの接続処理 =====
+  else {
+    handlePlayerConnection(socket);
+  }
+});
+
+
+/**
+ * ホスト用の接続処理
+ * @param {import("socket.io").Socket} socket
+ */
+function handleHostConnection(socket) {
+  console.log(`ホストが接続しました: ${socket.id}`);
+  socket.join(HOST_ROOM);
+
+  // ホストに現在の全プレイヤー情報を送信
+  socket.emit('update player list', Array.from(gameState.players.values()));
+  if (gameState.gameStarted) {
+    socket.emit("questioner decided", gameState.questioner);
+    socket.emit("usermodes", gameState.usermode);
   }
 
-  connectedSockets.push(socket); // ソケットを登録
+  socket.on('disconnect', () => {
+    console.log(`ホストが切断しました: ${socket.id}`);
+  });
+}
 
-  socket.on("chat message", (msg) => {
+/**
+ * プレイヤー用の接続処理
+ * @param {import("socket.io").Socket} socket
+ */
+function handlePlayerConnection(socket) {
+  console.log(`プレイヤー候補が接続しました: ${socket.id}`);
+
+  // 現状、このコードでは同じ人が別タブで開くと別のプレイヤーとして扱われます。
+  // 同一人物の複数デバイスを完全に同期させるには、クライアント側で生成した
+  // 一意のID（localStorageに保存するなど）を`login`時に渡す改修が必要です。
+
+  socket.on("login", (msg) => {
+    // 定員チェック
+    if (gameState.players.size >= gameState.maxPlayers && !Array.from(gameState.players.values()).some(p => p.username === msg)) {
+      socket.emit("login rejected", "これ以上参加できません。定員に達しています。");
+      socket.disconnect(true);
+      return;
+    }
+
+    const userNumber = gameState.playerNumberCounter;
+    socket.data.userNumber = userNumber;
     socket.data.username = msg;
-    io.emit("cmessage", msg);
+
+    // プレイヤー情報を保存
+    gameState.players.set(userNumber, {
+      userNumber: userNumber,
+      username: msg,
+    });
+    gameState.playerNumberCounter++;
+
+    socket.emit("user number", userNumber);
+    console.log(`${msg}(${userNumber})さんが参加しました。`);
+
+    // ホストと全プレイヤーに更新を通知
+    broadcastPlayerList();
+
+    // 4人目がログインしたらゲーム開始
+    if (gameState.players.size === gameState.maxPlayers) {
+      startGame();
+    }
   });
 
-  socket.on("login", () => {
-    socket.data.usernumber = i;
-    socket.emit("user number", socket.data.usernumber);
-    i++;
-    console.log(`${socket.data.usernumber}さんが参加しました。`);
+  socket.on("chat message", (msg) => {
+    const messageData = {
+      userNumber: socket.data.userNumber,
+      username: socket.data.username,
+      message: msg,
+    };
+    // 全員（ホスト含む）にチャットメッセージを送信
+    io.emit("cmessage", messageData);
+  });
 
-    // 他ユーザーに通知
-    socket.broadcast.emit(
-      "user joined",
-      `${socket.data.usernumber}さんが参加しました。`
-    );
+  socket.on("send question", (qtext) => {
+    if ((socket.data.userNumber + 1) === gameState.questioner) {
+      const qIndex = gameState.countquestion;
+      gameState.questiontext[qIndex] = qtext;
+      gameState.countquestion++;
+      console.log(`質問${gameState.countquestion}: ${qtext}`);
 
-    // 4人目がログインしたら出題者を決定して送信
-    if (i === 4) {
-      questioner = r;
-      usermode = [0, 0, 0, 0];
-      usermode[questioner] = 1;
-      console.log("出題者は: " + questioner);
-      io.emit("game start");
-      io.emit("questioner decided", questioner);
-      io.emit("usermodes", usermode);
+      const questionData = { index: qIndex, text: qtext };
+      // 質問を全クライアント（ホスト含む）に送信
+      io.emit("new question", questionData);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("ユーザーが切断しました。");
-
-    connectedSockets = connectedSockets.filter((s) => s !== socket);
-  }); // 質問を受け取るイベント
-  socket.on("send question", (qtext) => {
-    console.log(`質問を受け取りました: ${qtext}`);
-    if (socket.data.usernumber === questioner) {
-      questiontext[countquestion] = qtext;
-      countquestion++;
-      console.log(`質問${countquestion}: ${qtext}`); // 質問を全クライアントに送信（必要に応じて出題者を除外可能）
-
-      io.emit("new question", {
-        index: countquestion - 1,
-        text: qtext,
-      });
+    const { userNumber, username } = socket.data;
+    if (userNumber !== undefined) {
+      gameState.players.delete(userNumber);
+      // ゲームリセットのロジックなどをここに追加可能
+      console.log(`${username}(${userNumber})さんが切断しました。`);
+      broadcastPlayerList();
+    } else {
+      console.log("未ログインのユーザーが切断しました。");
     }
   });
-});
+}
+
+/**
+ * ゲームを開始する
+ */
+function startGame() {
+//   const r = Math.floor(Math.random() * gameState.maxPlayers);
+  const r = 4; // デバッグ用に固定値を使用
+  gameState.questioner = r;
+  gameState.usermode = Array(gameState.maxPlayers).fill(0);
+  gameState.usermode[gameState.questioner] = 1;
+  gameState.gameStarted = true;
+
+  console.log("ゲーム開始！ 出題者は: " + gameState.questioner);
+  io.emit("game start");
+  io.emit("questioner decided", gameState.questioner);
+  io.emit("usermodes", gameState.usermode);
+}
+
+/**
+ * 現在のプレイヤーリストをホストと全プレイヤーに送信する
+ */
+function broadcastPlayerList() {
+  const playerList = Array.from(gameState.players.values());
+  // ホストに送信
+  io.to(HOST_ROOM).emit('update player list', playerList);
+  // 全プレイヤーに送信
+  io.emit('user joined', playerList); // イベント名は元の`user joined`を流用または変更
+}
 
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
