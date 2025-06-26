@@ -77,12 +77,14 @@ function handleAnswerTimeout() {
     const qIndex = countquestion - 1;
     if (!answertext[qIndex]) {
         console.log("誰も回答しなかったため、回答者全員が3点減点されます。");
+        
 
         // 回答者全員を減点（usermode = 0 のユーザー）
         for (let i = 0; i < 4; i++) {
             if (i !== questioner && connectedSockets[i]) {
                 score[i] -= 3;
-                if (score[i] < 0) score[i] = 0; // スコアがマイナスにならないようにする
+
+                
             }
         }
 
@@ -107,6 +109,11 @@ function handleTimeUp() {
     if (countquestion >= 3) {
         io.emit("game finished", { questions: questiontext, answers: answertext });
         console.log("ゲーム終了: 質問3回完了");
+        io.emit("game finished", {
+            questions: questiontext,
+            answers: answertext,
+            scores: score  // ←★ スコアを追加で送信
+        });
         return;
     }
 

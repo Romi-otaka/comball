@@ -167,24 +167,40 @@
    　　　　　 item.style.color = "green";
   　　　　　　  messages.appendChild(item);
 　　　　});
-　
+　　　　　socket.on("game finished", ({ questions, answers, scores }) => {
+   　　　　　　 alert("ゲーム終了！お疲れ様でした！");
 
-        socket.on("game finished", ({ questions, answers }) => {
-    　　　　　　alert("ゲーム終了！お疲れ様でした！");
-    
    　　　　　　 const item = document.createElement("li");
    　　　　　　 item.textContent = "ゲーム終了！質問と最初の回答：";
    　　　　　　 messages.appendChild(item);
-   　　　　　　　questions.forEach((q, i) => {
-        　　　　　　　　　const qItem = document.createElement("li");
-       　　　　　　　　　 qItem.textContent = `質問${i + 1}: ${q} / 回答: ${answers[i] || "未回答"}`;
-      　　　　　　　　　  qItem.style.color = "purple";
-      　　　　　　　　　  messages.appendChild(qItem);
-   　　　　　　　 });
 
-   　　　　　　 questionArea.style.display = "none";
-    　　　　　btn.disabled = true;
-　　　　　});
+   　　　　　　 questions.forEach((q, i) => {
+    　　　　　　    const qItem = document.createElement("li");
+     　　　　　　   qItem.textContent = `質問${i + 1}: ${q} / 回答: ${answers[i] || "未回答"}`;
+      　　　　　　  qItem.style.color = "purple";
+       　　　　　　 messages.appendChild(qItem);
+    　　　　　});
+
+   　　　　　　 // ★ スコアを表示
+   　　　　　 const scoreTitle = document.createElement("li");
+    　　　　　scoreTitle.textContent = "最終スコア:";
+   　　　　　 scoreTitle.style.color = "black";
+   　　　　　 messages.appendChild(scoreTitle);
+
+   　　　　　 scores.forEach((s, i) => {
+       　　　　　 const sItem = document.createElement("li");
+        　　　　　sItem.textContent = `プレイヤー${i}：${s}点`;
+        　　　　　sItem.style.color = "blue";
+       　　　　　 messages.appendChild(sItem);
+    　　　　});
+
+    　　　　questionArea.style.display = "none";
+   　　　　 btn.disabled = true;
+});
+
+　
+
+        
 
 
         window.addEventListener("load", () => {
@@ -195,3 +211,4 @@
     </script>
 </body>
 </html>
+　　
