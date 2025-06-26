@@ -29,6 +29,29 @@ let clickedCount = [0, 0, 0, 0]; // ← 各プレイヤーのクリック数
 let score = [0, 0, 0, 0]; // 各プレイヤーのスコア
 
 
+function resetServerState() {
+    r = Math.floor(Math.random() * 4);
+    questioner = null;
+    usermode = [0, 0, 0, 0];
+    connectedSockets = [null, null, null, null];
+    countquestion = 0;
+    questiontext = ['', '', ''];
+    answertext = ['', '', ''];
+    answeredThisPhase = false;
+    nextQuestioner = null;
+
+    counter = 0;
+    timeLeft = 30;
+    anstimer = 0;
+    isAnswerTimeActive = false;
+    isGameTimeActive = false;
+    clickedCount = [0, 0, 0, 0];
+    score = [0, 0, 0, 0];
+
+    console.log("⚠️ サーバー状態をリセットしました");
+}
+
+
 function handleLogin(socket, ack, usernumber) {
     socket.emit("user number", usernumber);
     console.log(`${usernumber}さんが参加しました。`);
@@ -301,7 +324,9 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
+　　 resetServerState();  // ← 起動時に状態リセット！
     console.log(`listening on ${PORT}`);
+    
 });
 
 
