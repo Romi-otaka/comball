@@ -266,10 +266,28 @@ function rejectConnectionFull(socket) {
     socket.emit("login rejected", "これ以上参加できません。定員に達しています。");
     socket.disconnect(true);
 }
+
+
 setInterval(() => {
+    // Timer変数の増加
     updateAnswerTimer();
     updateGameTimer();
 
+    // // Timer変数の送信
+    // connectedSockets.forEach((sock, idx) => {
+    //     if (sock) {
+    //         sock.emit("timer_update", {
+    //             timeLeft,
+    //             counter: clickedCount[idx],
+    //             anstimer,
+    //             score: score[idx]
+    //         });
+    //     }
+    // });
+}, 1000); // 毎秒送信
+
+setInterval(() => {
+    // 0.5秒ごとにタイマー状態をクライアントに送信
     connectedSockets.forEach((sock, idx) => {
         if (sock) {
             sock.emit("timer_update", {
@@ -280,9 +298,12 @@ setInterval(() => {
             });
         }
     });
-}, 1000); // 毎秒送信
+}, 50);
 
 
+
+
+//変数を分ける　　1000m秒と100ミリ秒とかで分ける
 
 io.on("connection", (socket) => {
     console.log("ユーザーが接続しました。");
@@ -331,3 +352,4 @@ server.listen(PORT, () => {
 
 
 //push用　
+//点数の時間の点数
