@@ -273,6 +273,55 @@ function rejectConnectionFull(socket) {
     socket.disconnect(true);
 }
 
+function reset() {
+    console.log("🔄 リセット要求を受信。ゲームを初期化します。");
+
+    // サーバー状態リセット（scoreやクリック数など）
+    r = Math.floor(Math.random() * 4);
+    questioner = null;
+    usermode = [0, 0, 0, 0];
+    countquestion = 0;
+    questiontext = ['', '', ''];
+    answertext = ['', '', ''];
+    answeredThisPhase = false;
+    nextQuestioner = null;
+
+    counter = 0;
+    timeLeft = 30;
+    anstimer = 0;
+    isAnswerTimeActive = false;
+    isGameTimeActive = false;
+    clickedCount = [0, 0, 0, 0];
+    score = [0, 0, 0, 0];
+
+    // 現在接続中のユーザーの数を数える
+    const currentUsers = connectedSockets.filter(s => s !== null).length;
+
+    // 出題者をランダムに選ぶ
+    if (currentUsers === 4) {
+        questioner = r;
+        usermode[questioner] = 1;
+
+        console.log("🔁 出題者は: " + questioner);
+        io.emit("questioner decided", questioner);
+        io.emit("usermodes", usermode);
+    } else {
+        console.log(`⚠️ リセット後、${currentUsers}人しか接続していません。4人必要です。`);
+    }
+
+    // 全クライアントに初期化情報を送信
+    connectedSockets.forEach((sock, idx) => {
+        if (sock) {
+            sock.emit("reset_done", {
+                yourNumber: idx,
+                score: 0,
+                clicked: 0
+            });
+        }
+    });
+}
+
+
 
 setInterval(() => {
     // Timer変数の増加
@@ -348,6 +397,11 @@ io.on("connection", (socket) => {
         counter: clickedCount[usernumber],
         anstimer
     });
+     socket.on("reset", () => {
+       reset();
+    });
+
+
 });
 
 server.listen(PORT, () => {

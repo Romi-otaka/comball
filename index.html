@@ -221,6 +221,26 @@
         });
 
 
+        socket.on("reset_done", ({ yourNumber, score, clicked }) => {
+            playerDisplay.textContent = `あなたは ${yourNumber} 番目のプレイヤーです`;
+            scoreEl.textContent = score;
+            cnt.textContent = clicked;
+
+            // UIを初期状態に戻す
+            messages.innerHTML = "";  // チャットログ消去
+            questionInput.value = "";
+            answerInput.value = "";
+            questionArea.style.display = "none";
+            answerArea.style.display = "none";
+            btn.disabled = false;
+
+            // ユーザーに通知
+            alert("ゲームがリセットされました。再開します！");
+        });
+
+        
+
+
 
 
 
