@@ -1,14 +1,30 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Socket.IO Chat</title>
     <style>
-        ul { list-style-type: none; padding: 0; }
-        li { padding: 8px; background: #eee; margin-bottom: 5px; }
-        #player-number { font-size: 20px; font-weight: bold; color: green; margin-bottom: 10px; }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 8px;
+            background: #eee;
+            margin-bottom: 5px;
+        }
+
+        #player-number {
+            font-size: 20px;
+            font-weight: bold;
+            color: green;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
+
 <body>
     <div id="player-number"></div>
     <ul id="messages"></ul>
@@ -33,6 +49,7 @@
     <p>押した回数: <span id="cnt">0</span>回</p>
 
     <p>スコア: <span id="score">0</span>点</p>
+    <button id="reset">RESET</button>
 
 
     <script src="/socket.io/socket.io.js"></script>
@@ -53,7 +70,7 @@
         const ansTimeEl = document.getElementById('ans-time');
         const deepTimeEl = document.getElementById('deep-time');
         const cnt = document.getElementById('cnt');
- 　　　　const scoreEl = document.getElementById("score");
+        const scoreEl = document.getElementById("score");
         let currentQuestioner = null;
 
 
@@ -63,13 +80,13 @@
 
 
         socket.on("retry_question", () => {
-   　　　　　　 alert("誰も回答しなかったため、もう一度質問を入力してください！");
-   　　　　　　 questionArea.style.display = "block";  // 質問入力フォームを再表示
-　　　　　});
+            alert("誰も回答しなかったため、もう一度質問を入力してください！");
+            questionArea.style.display = "block";  // 質問入力フォームを再表示
+        });
 
 
 
-        socket.on("user joined", function(msg) {
+        socket.on("user joined", function (msg) {
             const item = document.createElement("li");
             item.textContent = msg;
             item.style.color = "blue";
@@ -82,7 +99,7 @@
             socket.data.usernumber = num;
         });
 
-        socket.on("questioner decided", function(questioner) {
+        socket.on("questioner decided", function (questioner) {
             currentQuestioner = questioner;
 
             const item = document.createElement("li");
@@ -142,65 +159,70 @@
 
 
         socket.on("answer locked", ({ user }) => {
-   　　　　　　　 alert(`ユーザー${user}の回答が受け付けられました。回答タイム終了です。`);
-    　　　　　　　answerArea.style.display = "none";
-　　　　　});
+            alert(`ユーザー${user}の回答が受け付けられました。回答タイム終了です。`);
+            answerArea.style.display = "none";
+        });
 
 
         btn.addEventListener('click', () => {
             socket.emit('clicked');
         });
 
-       socket.on('timer_update', data => {
-    　　　　ansTimeEl.textContent = data.anstimer;
-    　　　　deepTimeEl.textContent = data.timeLeft;
-    　　　　cnt.textContent = data.counter;
-    　　　　if (data.score !== undefined) {
-        　　　　scoreEl.textContent = data.score;
-    　　　　}
-　　　　　});
+
+        reset.addEventListener('click', () => {
+            socket.emit('reset');
+        });
+
+        socket.on('timer_update', data => {
+            ansTimeEl.textContent = data.anstimer;
+            deepTimeEl.textContent = data.timeLeft;
+            cnt.textContent = data.counter;
+            if (data.score !== undefined) {
+                scoreEl.textContent = data.score;
+            }
+        });
 
 
-　　　　socket.on("answer received", ({ user, text }) => {
-    　　　　　const item = document.createElement("li");
-    　　　　　item.textContent = `ユーザー${user}の回答: ${text}`;
-   　　　　　 item.style.color = "green";
-  　　　　　　  messages.appendChild(item);
-　　　　});
-　　　　　socket.on("game finished", ({ questions, answers, scores }) => {
-   　　　　　　 alert("ゲーム終了！お疲れ様でした！");
+        socket.on("answer received", ({ user, text }) => {
+            const item = document.createElement("li");
+            item.textContent = `ユーザー${user}の回答: ${text}`;
+            item.style.color = "green";
+            messages.appendChild(item);
+        });
+        socket.on("game finished", ({ questions, answers, scores }) => {
+            alert("ゲーム終了！お疲れ様でした！");
 
-   　　　　　　 const item = document.createElement("li");
-   　　　　　　 item.textContent = "ゲーム終了！質問と最初の回答：";
-   　　　　　　 messages.appendChild(item);
+            const item = document.createElement("li");
+            item.textContent = "ゲーム終了！質問と最初の回答：";
+            messages.appendChild(item);
 
-   　　　　　　 questions.forEach((q, i) => {
-    　　　　　　    const qItem = document.createElement("li");
-     　　　　　　   qItem.textContent = `質問${i + 1}: ${q} / 回答: ${answers[i] || "未回答"}`;
-      　　　　　　  qItem.style.color = "purple";
-       　　　　　　 messages.appendChild(qItem);
-    　　　　　});
+            questions.forEach((q, i) => {
+                const qItem = document.createElement("li");
+                qItem.textContent = `質問${i + 1}: ${q} / 回答: ${answers[i] || "未回答"}`;
+                qItem.style.color = "purple";
+                messages.appendChild(qItem);
+            });
 
-   　　　　　　 // ★ スコアを表示
-   　　　　　 const scoreTitle = document.createElement("li");
-    　　　　　scoreTitle.textContent = "最終スコア:";
-   　　　　　 scoreTitle.style.color = "black";
-   　　　　　 messages.appendChild(scoreTitle);
+            // ★ スコアを表示
+            const scoreTitle = document.createElement("li");
+            scoreTitle.textContent = "最終スコア:";
+            scoreTitle.style.color = "black";
+            messages.appendChild(scoreTitle);
 
-   　　　　　 scores.forEach((s, i) => {
-       　　　　　 const sItem = document.createElement("li");
-        　　　　　sItem.textContent = `プレイヤー${i}：${s}点`;
-        　　　　　sItem.style.color = "blue";
-       　　　　　 messages.appendChild(sItem);
-    　　　　});
+            scores.forEach((s, i) => {
+                const sItem = document.createElement("li");
+                sItem.textContent = `プレイヤー${i}：${s}点`;
+                sItem.style.color = "blue";
+                messages.appendChild(sItem);
+            });
 
-    　　　　questionArea.style.display = "none";
-   　　　　 btn.disabled = true;
-});
+            questionArea.style.display = "none";
+            btn.disabled = true;
+        });
 
-　
 
-        
+
+
 
 
         window.addEventListener("load", () => {
@@ -210,5 +232,6 @@
         });
     </script>
 </body>
+
 </html>
 　　

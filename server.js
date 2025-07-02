@@ -47,7 +47,7 @@ function resetServerState() {
     isGameTimeActive = false;
     clickedCount = [0, 0, 0, 0];
     score = [0, 0, 0, 0];
-
+    
     console.log("⚠️ サーバー状態をリセットしました");
 }
 
@@ -100,14 +100,14 @@ function handleAnswerTimeout() {
     const qIndex = countquestion - 1;
     if (!answertext[qIndex]) {
         console.log("誰も回答しなかったため、回答者全員が3点減点されます。");
-        
+
 
         // 回答者全員を減点（usermode = 0 のユーザー）
         for (let i = 0; i < 4; i++) {
             if (i !== questioner && connectedSockets[i]) {
                 score[i] -= 3;
 
-                
+
             }
         }
 
@@ -239,7 +239,7 @@ function handleSendAnswer(socket, answer) {
             nextQuestioner = usernumber;
             console.log(`【記録】ユーザー${usernumber}の回答: ${answer}`);
 
-            
+
             isAnswerTimeActive = false;
             io.emit("answer locked", { user: usernumber });
             handleAnswerTimeout();
@@ -351,9 +351,9 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-　　 resetServerState();  // ← 起動時に状態リセット！
+    resetServerState();  // ← 起動時に状態リセット！
     console.log(`listening on ${PORT}`);
-    
+
 });
 
 
