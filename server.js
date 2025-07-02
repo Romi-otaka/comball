@@ -234,6 +234,22 @@ function handleSendAnswer(socket, answer) {
             answertext[qIndex] = answer;
             nextQuestioner = usernumber;
             console.log(`【記録】ユーザー${usernumber}の回答: ${answer}`);
+
+            // ✅ 回答者に usermode = 3 をセット
+            usermode = usermode.map((_, i) => i === usernumber ? 3 : 0);
+            usermode[questioner] = 1; // 出題者は引き続き1
+            io.emit("usermodes", usermode);
+
+            // ✅ 他ユーザーのクリック数 ×2 の合計を回答者に加点
+            let addedScore = 0;
+            for (let i = 0; i < 4; i++) {
+                if (i !== usernumber && i !== questioner) {
+                    addedScore += clickedCount[i] * 2;
+                }
+            }
+            score[usernumber] += addedScore;
+            console.log(`回答者${usernumber}に ${addedScore} 点（他ユーザーのクリック数 × 2）加算`);
+
             isAnswerTimeActive = false;
             io.emit("answer locked", { user: usernumber });
             handleAnswerTimeout();
